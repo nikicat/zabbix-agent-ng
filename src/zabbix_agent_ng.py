@@ -73,9 +73,8 @@ class script(object):
                 self.execute = self.execute_module
 
     def execute_module(self, host, *args):
-        for arg in args:
-            if arg == '$hostname':
-                arg = host
+        args = [arg == '$hostname' and host or arg for arg in args]
+        logging.debug('calling {0}.main({1})'.format(self.module_main.__module__, ','.join(args)))
         return self.module_main(*args)
 
     def execute_shell(self, host, *args):
@@ -102,7 +101,7 @@ class item(object):
 
     def check(self, host):
         self.last_check = time.time()
-        logging.debug('executing script {0}[{1},{2}]'.format(self.script.key, host, ','.join(self.args)))
+        logging.debug('executing script {0}[{2}] for host {1}'.format(self.script.key, host, ','.join(self.args)))
         return self.script.execute(host, *self.args)
 
     def get_timeout(self):
