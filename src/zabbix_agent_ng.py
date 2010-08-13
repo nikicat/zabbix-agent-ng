@@ -74,6 +74,7 @@ class script(object):
         cmd = self.command
         for i in range(1, 10):
             cmd = cmd.replace('${0}'.format(i), i <= len(args) and args[i-1] or '')
+        logging.debug('invoking shell: {0}'.format(cmd))
         proc = subprocess.Popen(cmd, cwd=self.bin_dir, stdout=subprocess.PIPE, shell=True)
         output = proc.communicate()[0].split('\n', 1)[0]
         if proc.returncode != 0:
@@ -92,7 +93,7 @@ class item(object):
 
     def check(self, host):
         self.last_check = time.time()
-        logging.debug('executing script {0}[{1}, {2}]'.format(self.script.key, host, self.args))
+        logging.debug('executing script {0}[{1},{2}]'.format(self.script.key, host, ','.join(self.args)))
         return self.script.execute(host, *self.args)
 
     def get_timeout(self):
@@ -116,7 +117,7 @@ class host(object):
             key, args = self.item_re.match(raw_key).group(1, 3)
             for script in self.scripts:
                 if script.key == key:
-                    self.items.append(item(interval, script, args or [] and args.split(',')))
+                    self.items.append(item(interval, script, args and args.split(',') or []))
                     break
 
     def update(self, item):
