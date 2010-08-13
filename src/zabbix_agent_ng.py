@@ -65,15 +65,24 @@ class script(object):
         logging.debug('initializing script {0} for key {1}'.format(self.command, self.key))
         if self.key.endswith('[*]'):
             self.key = self.key[:-3]
+        self.execute = self.execute_shell
         if self.command.split()[0].endswith('.py'):
             module = __import__(self.command.split()[0][:-3])
             if hasattr(module, 'main'):
-                self.execute = module.main
+                self.module_main = module.main
+                self.execute = self.execute_module
 
-    def execute(self, *args):
+    def execute_module(self, host, *args):
+        for arg in args:
+            if arg == '$hostname':
+                arg = host
+        self.module_main(*args)
+
+    def execute_shell(self, host, *args):
         cmd = self.command
-        for i in range(1, 10):
-            cmd = cmd.replace('${0}'.format(i), i <= len(args) and args[i-1] or '')
+        for i in range(10):
+            cmd = cmd.replace('${0}'.format(i+1), i < len(args) and args[i] or '')
+        cmd = cmd.replace('$hostname', host)
         logging.debug('invoking shell: {0}'.format(cmd))
         proc = subprocess.Popen(cmd, cwd=self.bin_dir, stdout=subprocess.PIPE, shell=True)
         output = proc.communicate()[0].split('\n', 1)[0]
@@ -127,7 +136,7 @@ class host(object):
             try:
                 self.trapper.update_item(item.script.key, item.check(self.name))
             except BaseException, e:
-                logging.warning('failed to update item {0}[{1}, {2}]: {3}'.format(item.script.key, self.name, item.args, e))
+                logging.warning('failed to update item {0}[{2}] for host {1}: {3}'.format(item.script.key, self.name, ','.join(item.args), e))
 
     def get_nearest_check(self):
         return min([self] + self.items, key=lambda x: x.get_timeout())
