@@ -60,17 +60,20 @@ class trapper(object):
 
 class script(object):
     bin_dir = '/etc/zabbix/bin'
-    def __init__(self, key, name):
-        logging.debug('initializing script {0} {1}'.format(key, name))
-        self.key = key
-        self.name = name
-        if name.endswith('.py'):
-            module = __import__(name[:-3])
+    def __init__(self, line):
+        self.key, self.command = line.split(',', 1)
+        logging.debug('initializing script {0} for key {1}'.format(self.command, self.key))
+        if self.key.endswith('[*]'):
+            self.key = self.key[:-3]
+        if self.command.split()[0].endswith('.py'):
+            module = __import__(self.command.split()[0][:-3])
             if hasattr(module, 'main'):
                 self.execute = module.main
 
     def execute(self, *args):
-        cmd = [self.name] + list(args)
+        cmd = self.command
+        for i in range(1, 10):
+            cmd = cmd.replace('${0}'.format(i), i <= len(args) and args[i-1] or '')
         proc = subprocess.Popen(cmd, cwd=self.bin_dir, stdout=subprocess.PIPE, shell=True)
         output = proc.communicate()[0].split('\n', 1)[0]
         if proc.returncode != 0:
@@ -146,16 +149,17 @@ class agent(object):
     def load_config(self, full_path):
         try:
             for line in open(full_path).readlines():
-                if line.startswith('UserParameter='):
-                    self.parse_config_line(line)
+                if line[0] == '#' or line == '\n':
+                    continue
+                name, val = line.split('=', 1)
+                if name == 'UserParameter':
+                    self.parse_config_line(val)
         except BaseException, e:
             logging.warning('can\'t load config file {0}: {1}'.format(full_path, e))
 
-    config_re = re.compile('^UserParameter=(.+)\[\*\],(.+?) .*$')
     def parse_config_line(self, line):
-        key, name = self.config_re.match(line).group(1, 2)
         try:
-            self.scripts.append(script(key, name))
+            self.scripts.append(script(line))
         except BaseException, e:
             logging.warning('can\'t parse line {0}: {1}'.format(line, e))
 
