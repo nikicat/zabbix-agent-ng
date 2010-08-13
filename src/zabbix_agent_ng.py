@@ -153,7 +153,7 @@ class agent(object):
                     continue
                 name, val = line.split('=', 1)
                 if name == 'UserParameter':
-                    self.parse_config_line(val)
+                    self.parse_config_line(val[:-1])
         except BaseException, e:
             logging.warning('can\'t load config file {0}: {1}'.format(full_path, e))
 
