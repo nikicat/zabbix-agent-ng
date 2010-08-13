@@ -72,41 +72,39 @@ class script(object):
                 self.module_main = module.main
                 self.execute = self.execute_module
 
-    def execute_module(self, host, *args):
-        args = [arg == '$hostname' and host or arg for arg in args]
+    def execute_module(self, *args):
         logging.debug('calling {0}.main({1})'.format(self.module_main.__module__, ','.join(args)))
         result = self.module_main(*args)
         if type(result) is float:
             result = '{0:f}'.format(result)
         return result
 
-    def execute_shell(self, host, *args):
+    def execute_shell(self, *args):
         cmd = self.command
         for i in range(10):
             cmd = cmd.replace('${0}'.format(i+1), i < len(args) and args[i] or '')
-        cmd = cmd.replace('$hostname', host)
         logging.debug('invoking shell: {0}'.format(cmd))
         proc = subprocess.Popen(cmd, cwd=self.bin_dir, stdout=subprocess.PIPE, shell=True)
         output = proc.communicate()[0].split('\n', 1)[0]
         if proc.returncode != 0:
-            raise subprocess.CalledProcessError(proc.returncode, ' '.join(cmd))
+            raise subprocess.CalledProcessError(proc.returncode, cmd)
         return output
 
 sys.path.append(script.bin_dir)
 os.environ['PATH'] = os.pathsep.join([os.environ['PATH'], script.bin_dir])
 
 class item(object):
-    def __init__(self, key, interval, script, args):
+    def __init__(self, host, key, interval, script, args):
         self.key = key
         self.interval = interval
         self.script = script
-        self.args = args
+        self.args = [arg == '$hostname' and host or arg for arg in args]
         self.last_check = 0
 
-    def check(self, host):
+    def check(self):
         self.last_check = time.time()
-        logging.debug('executing script {0}[{2}] for host {1}'.format(self.script.key, host, ','.join(self.args)))
-        return self.script.execute(host, *self.args)
+        logging.debug('executing script {0}[{1}]'.format(self.script.key, ','.join(self.args)))
+        return self.script.execute(*self.args)
 
     def get_timeout(self):
         return self.interval - (time.time() - self.last_check)
@@ -122,22 +120,26 @@ class host(object):
 
     item_re = re.compile('^((.+?)(\[(.+)\])?)$')
     def update_active_checks(self):
-        logging.info('updating item list for host {0}'.format(self.name))
-        self.items = []
-        self.last_update = time.time()
-        for raw_key, interval in self.trapper.get_active_checks():
-            key, bare_key, args = self.item_re.match(raw_key).group(1, 2, 4)
-            for script in self.scripts:
-                if script.key == bare_key:
-                    self.items.append(item(key, interval, script, args and args.split(',') or []))
-                    break
+        try:
+            logging.debug('updating item list for host {0}'.format(self.name))
+            self.last_update = time.time()
+            items = []
+            for raw_key, interval in self.trapper.get_active_checks():
+                key, bare_key, args = self.item_re.match(raw_key).group(1, 2, 4)
+                for script in self.scripts:
+                    if script.key == bare_key:
+                        items.append(item(self.name, key, interval, script, args and args.split(',') or []))
+                        break
+            self.items = items
+        except BaseException, e:
+            logging.error('failed to update active checks list for host {0}: {1}'.format(self.name, e))
 
     def update(self, item):
         if item == self:
             self.update_active_checks()
         else:
             try:
-                self.trapper.update_item(item.key, item.check(self.name))
+                self.trapper.update_item(item.key, item.check())
             except BaseException, e:
                 logging.warning('failed to update item {0}[{2}] for host {1}: {3}'.format(item.script.key, self.name, ','.join(item.args), e))
 
