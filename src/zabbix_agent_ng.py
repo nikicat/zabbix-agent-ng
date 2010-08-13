@@ -14,6 +14,7 @@ import sys
 import time
 import logging
 import subprocess
+import optparse
 
 class trapper(object):
     def __init__(self, host, server, port=10051):
@@ -178,14 +179,14 @@ class agent(object):
         current_host.update(current_item)
 
 if __name__ == '__main__':
-#    c = trapper('tunnel092', 'monitor-iva1.yandex.net')
-#    c.update_item('system.uptime', 12345)
-#    print('OK')
-#    c.update_item('system.uptime', 12345)
-#    print('OK')
-#    print(c.get_active_checks())
-#    c.update_item('system.uptime', 12345)
-#    print('OK')
-    logging.basicConfig(level=logging.DEBUG)
-    a = agent(['tunnel093', 'tunnel092'], 'monitor-iva1.yandex.net')
+    parser = optparse.OptionParser()
+    parser.add_option('-s', '--server', dest='server', default='monitor-iva1.yandex.net', help='zabbix trapper to connect to')
+    parser.add_option('--hosts', dest='hosts', default='', help='host list, separated by commas')
+    parser.add_option('-p', '--port', dest='port', type='int', default=10051, help='zabbix trapper port')
+    parser.add_option('-l', '--log-level', dest='log_level', type='int', default=20, help='log level')
+
+    options = parser.parse_args()[0]
+
+    logging.basicConfig(level=options.log_level)
+    a = agent(options.hosts.split(','), options.server)
     a.start()
