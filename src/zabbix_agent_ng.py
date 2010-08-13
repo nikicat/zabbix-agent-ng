@@ -148,8 +148,8 @@ class agent(object):
             for line in open(full_path).readlines():
                 if line.startswith('UserParameter='):
                     self.parse_config_line(line)
-        except:
-            logging.warning('can\'t load config file {0}'.format(full_path))
+        except BaseException, e:
+            logging.warning('can\'t load config file {0}: {1}'.format(full_path, e))
 
     config_re = re.compile('^UserParameter=(.+)\[\*\],(.+?) .*$')
     def parse_config_line(self, line):
