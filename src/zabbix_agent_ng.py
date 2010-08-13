@@ -76,7 +76,7 @@ class script(object):
         for arg in args:
             if arg == '$hostname':
                 arg = host
-        self.module_main(*args)
+        return self.module_main(*args)
 
     def execute_shell(self, host, *args):
         cmd = self.command
