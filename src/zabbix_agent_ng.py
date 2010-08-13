@@ -75,7 +75,10 @@ class script(object):
     def execute_module(self, host, *args):
         args = [arg == '$hostname' and host or arg for arg in args]
         logging.debug('calling {0}.main({1})'.format(self.module_main.__module__, ','.join(args)))
-        return self.module_main(*args)
+        result = self.module_main(*args)
+        if type(result) is float:
+            result = '{0:f}'.format(result)
+        return result
 
     def execute_shell(self, host, *args):
         cmd = self.command
