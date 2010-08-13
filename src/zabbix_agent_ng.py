@@ -93,10 +93,11 @@ sys.path.append(script.bin_dir)
 os.environ['PATH'] = os.pathsep.join([os.environ['PATH'], script.bin_dir])
 
 class item(object):
-    def __init__(self, interval, script, args):
+    def __init__(self, key, interval, script, args):
+        self.key = key
+        self.interval = interval
         self.script = script
         self.args = args
-        self.interval = interval
         self.last_check = 0
 
     def check(self, host):
@@ -116,16 +117,16 @@ class host(object):
         self.last_update = 0
         self.items = []
 
-    item_re = re.compile('^(.+?)(\[(.+)\])?$')
+    item_re = re.compile('^((.+?)(\[(.+)\])?)$')
     def update_active_checks(self):
         logging.info('updating item list for host {0}'.format(self.name))
         self.items = []
         self.last_update = time.time()
         for raw_key, interval in self.trapper.get_active_checks():
-            key, args = self.item_re.match(raw_key).group(1, 3)
+            key, bare_key, args = self.item_re.match(raw_key).group(1, 2, 4)
             for script in self.scripts:
-                if script.key == key:
-                    self.items.append(item(interval, script, args and args.split(',') or []))
+                if script.key == bare_key:
+                    self.items.append(item(key, interval, script, args and args.split(',') or []))
                     break
 
     def update(self, item):
@@ -133,7 +134,7 @@ class host(object):
             self.update_active_checks()
         else:
             try:
-                self.trapper.update_item(item.script.key, item.check(self.name))
+                self.trapper.update_item(item.key, item.check(self.name))
             except BaseException, e:
                 logging.warning('failed to update item {0}[{2}] for host {1}: {3}'.format(item.script.key, self.name, ','.join(item.args), e))
 
