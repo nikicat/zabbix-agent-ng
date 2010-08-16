@@ -154,13 +154,26 @@ class agent(object):
 
     def __init__(self, hosts, server, update_interval=120):
         self.scripts = []
+        self.sleep_time = 0
         self.load_configs()
+        self.add_self_tests()
         self.hosts = [host(host_name, server, update_interval, self.scripts) for host_name in hosts]
 
     def load_configs(self):
         for name in os.listdir(self.config_dir):
             self.load_config(os.path.join(self.config_dir, name))
-                
+            
+    def get_sleep_time(self):
+        return self.sleep_time
+            
+    def add_self_tests(self):
+        class sleep_time_item(object):
+            key = 'agent.sleep_time'
+            @classmethod
+            def execute(cls):
+                return self.sleep_time
+        self.scripts.append(sleep_time_item)
+
     def load_config(self, full_path):
         try:
             for line in open(full_path).readlines():
@@ -195,6 +208,7 @@ class agent(object):
         if current_timeout > 0:
             logging.debug('sleeping for {0} seconds'.format(current_timeout))
             time.sleep(current_timeout)
+            self.sleep_time += current_timeout
         current_host.update(current_item)
 
 if __name__ == '__main__':
