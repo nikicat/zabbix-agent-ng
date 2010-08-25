@@ -7,14 +7,13 @@ Created on Aug 12, 2010
 import socket
 import base64
 import struct
-import os
 import os.path
 import re
 import sys
 import time
 import logging
 import subprocess
-import optparse
+from initd import daemon
 
 class trapper(object):
     def __init__(self, host, server, port=10051):
@@ -152,12 +151,12 @@ class host(object):
 class agent(object):
     config_dir = '/etc/zabbix/conf.d'
 
-    def __init__(self, hosts, server, update_interval=120):
+    def __init__(self, config):
         self.scripts = []
         self.sleep_time = 0
         self.load_configs()
         self.add_self_tests()
-        self.hosts = [host(host_name, server, update_interval, self.scripts) for host_name in hosts]
+        self.hosts = [host(host_name, config.server, config.update_interval, self.scripts) for host_name in config.hosts.split(',')]
 
     def load_configs(self):
         for name in os.listdir(self.config_dir):
@@ -191,10 +190,6 @@ class agent(object):
         except BaseException, e:
             logging.warning('can\'t parse line {0}: {1}'.format(line, e))
 
-    def start(self):
-        while True:
-            self.run()
-
     def run(self):
         current_timeout = 999999999999
         for host in self.hosts:
@@ -210,16 +205,13 @@ class agent(object):
             time.sleep(current_timeout)
             self.sleep_time += current_timeout
         current_host.update(current_item)
+        
+    @classmethod
+    def add_arguments(cls, parser):
+        parser.add_argument('-s', '--server', dest='server', default='monitor-iva1.yandex.net', help='zabbix trapper to connect to')
+        parser.add_argument('--hosts', dest='hosts', default='', help='host list, separated by commas')
+        parser.add_argument('-p', '--port', dest='port', type=int, default=10051, help='zabbix trapper port')
+        parser.add_argument('--update-interval', dest='update_interval', type=int, default=120, help='items update interval')
 
 if __name__ == '__main__':
-    parser = optparse.OptionParser()
-    parser.add_option('-s', '--server', dest='server', default='monitor-iva1.yandex.net', help='zabbix trapper to connect to')
-    parser.add_option('--hosts', dest='hosts', default='', help='host list, separated by commas')
-    parser.add_option('-p', '--port', dest='port', type='int', default=10051, help='zabbix trapper port')
-    parser.add_option('-l', '--log-level', dest='log_level', type='int', default=20, help='log level')
-
-    options = parser.parse_args()[0]
-
-    logging.basicConfig(level=options.log_level)
-    a = agent(options.hosts.split(','), options.server)
-    a.start()
+    daemon(agent, 'zabbix-agent-ng', foreground=True).start()
