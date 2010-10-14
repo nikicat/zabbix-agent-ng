@@ -1,0 +1,11 @@
+Source: zabbix-agent-ng
+Section: unknown
+Priority: extra
+Maintainer: Nikolay Bryskin <nbryskin@yandex-team.ru>
+Build-Depends: cdbs, debhelper (>= 7), python-support
+Standards-Version: 3.9.1
+
+Package: zabbix-agent-ng
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, pyinitd
+Description: zabbix-agent that can send data about multiple hosts

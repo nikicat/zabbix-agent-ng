@@ -1,0 +1,5 @@
+zabbix-agent-ng (0.0.1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Tue, 05 Oct 2010 12:26:47 +0400
