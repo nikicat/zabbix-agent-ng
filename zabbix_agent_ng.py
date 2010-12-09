@@ -20,13 +20,13 @@ class trapper(object):
         self.host = host
         self.server = server
         self.port = port
-        
+
     def _do_request(self, data):
         sock = socket.socket()
         sock.connect((self.server, self.port))
         sock.send(data)
         return sock.makefile()
-        
+
     def update_item(self, key, data):
         logging.debug('updating item for host {0} {1}={2}'.format(self.host, key, data))
         key = base64.b64encode(key)
@@ -36,7 +36,7 @@ class trapper(object):
         reply = self._do_request(request).read()
         if reply != 'OK':
             raise RuntimeError(reply)
-        
+
     def item_not_supported(self, key):
         self.update_item(key, 'ZBX_NOTSUPPORTED')
 
@@ -46,7 +46,7 @@ class trapper(object):
         version = '\1'
         msg = '{header}{version}{data_len}{data}'.format(**locals())
         return self._do_request(msg)
-        
+
     def get_active_checks(self):
         items = []
         for line in self._send_req('ZBX_GET_ACTIVE_CHECKS\n{0}\n'.format(self.host)).readlines():
@@ -144,7 +144,7 @@ class host(object):
 
     def get_nearest_check(self):
         return min([self] + self.items, key=lambda x: x.get_timeout())
-    
+
     def get_timeout(self):
         return self.update_interval - (time.time() - self.last_update)
 
@@ -161,10 +161,10 @@ class agent(object):
     def load_configs(self):
         for name in os.listdir(self.config_dir):
             self.load_config(os.path.join(self.config_dir, name))
-            
+
     def get_sleep_time(self):
         return self.sleep_time
-            
+
     def add_self_tests(self):
         class sleep_time_item(object):
             key = 'agent.sleep_time'
@@ -205,7 +205,7 @@ class agent(object):
             time.sleep(current_timeout)
             self.sleep_time += current_timeout
         current_host.update(current_item)
-        
+
     @classmethod
     def add_arguments(cls, parser):
         parser.add_argument('-s', '--server', dest='server', default='monitor-iva1.yandex.net', help='zabbix trapper to connect to')
