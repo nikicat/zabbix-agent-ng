@@ -7,5 +7,5 @@ Standards-Version: 3.9.1
 
 Package: zabbix-agent-ng
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, pyinitd
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-initd
 Description: zabbix-agent that can send data about multiple hosts
