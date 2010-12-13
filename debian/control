@@ -2,12 +2,12 @@ Source: zabbix-agent-ng
 Section: utils
 Priority: extra
 Maintainer: Nikolay Bryskin <nbryskin@yandex-team.ru>
-Build-Depends: cdbs, debhelper (>= 7), python (>= 2.6.2), python-support
+Build-Depends: debhelper (>= 7.3.5~), python-support (>= 0.90), python-all-dev
 Standards-Version: 3.9.1
 
 Package: zabbix-agent-ng
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-initd
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-config, python-daemon, python-ldap, python-setproctitle
 Description: zabbix-agent that can send data about multiple hosts
  zabbix-agent-ng utilizes python-gevent coroutine library, that gives him
  possibility of hightly concurrent statistics data retriveing and sending.

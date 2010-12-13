@@ -4,22 +4,32 @@ Created on Aug 12, 2010
 @author: nbryskin
 '''
 
+from gevent import monkey
+monkey.patch_all()
+import gevent
+from gevent.event import Event
 import socket
 import base64
 import struct
 import os.path
 import re
 import sys
+import signal
 import time
 import logging
 import subprocess
-from initd import daemon
+import config
+import daemon
+import daemon.pidlockfile
+import ldap
+from setproctitle import setproctitle
 
 class trapper(object):
-    def __init__(self, host, server, port=10051):
+    def __init__(self, host, server, port):
         self.host = host
         self.server = server
         self.port = port
+        self.logger = logging.getLogger(host)
 
     def _do_request(self, data):
         sock = socket.socket()
@@ -28,7 +38,7 @@ class trapper(object):
         return sock.makefile()
 
     def update_item(self, key, data):
-        logging.debug('updating item for host {0} {1}={2}'.format(self.host, key, data))
+        self.logger.debug('updating item {0}={1}'.format(key, data))
         key = base64.b64encode(key)
         data = base64.b64encode(str(data))
         host = base64.b64encode(self.host)
@@ -53,7 +63,7 @@ class trapper(object):
             if line[:-1] == 'ZBX_EOF':
                 break
             key, refresh_time = line.split(':')[:2]
-            logging.debug('received active check {0}'.format(line[:-1]))
+            self.logger.debug('received active check {0}'.format(line[:-1]))
             items.append((key, int(refresh_time)))
         return items
 
@@ -72,7 +82,7 @@ class script(object):
                 self.execute = self.execute_module
 
     def execute_module(self, *args):
-        logging.debug('calling {0}.main({1})'.format(self.module_main.__module__, ','.join(args)))
+        logging.debug('calling {0}.main({1})'.format(self.module_main.__module__, ', '.join(args)))
         result = self.module_main(*args)
         if type(result) is float:
             result = '{0:f}'.format(result)
@@ -93,54 +103,78 @@ sys.path.append(script.bin_dir)
 os.environ['PATH'] = os.pathsep.join([os.environ['PATH'], script.bin_dir])
 
 class item(object):
-    def __init__(self, host, key, interval, script, args):
+    def __init__(self, host, key, interval, script, args, trapper):
         self.key = key
         self.interval = interval
         self.script = script
+        self.logger = logging.getLogger(host)
         self.args = [arg == '$hostname' and host or arg for arg in args]
-        self.last_check = 0
+        self.trapper = trapper
+
+    def __eq__(self, other):
+        return self.key == other.key and self.interval == other.interval
+
+    def __hash__(self):
+        return (self.key, self.interval).__hash__()
+
+    def __str__(self):
+        return self.key
+
+    def check_loop(self):
+        while True:
+            try:
+                self.check()
+            except Exception, e:
+                self.logger.exception(e)
+            time.sleep(self.interval)
 
     def check(self):
-        self.last_check = time.time()
-        logging.debug('executing script {0}[{1}]'.format(self.script.key, ','.join(self.args)))
-        return self.script.execute(*self.args)
-
-    def get_timeout(self):
-        return self.interval - (time.time() - self.last_check)
+        self.logger.debug('executing script {0}[{1}]'.format(self.script.key, ', '.join(self.args)))
+        result = self.script.execute(*self.args)
+        self.logger.debug('result of script {0}[{1}] = {2}'.format(self.script.key, ', '.join(self.args), result))
+        self.trapper.update_item(self.key, result)
 
 class host(object):
-    def __init__(self, name, server, update_interval, scripts):
+    def __init__(self, name, options, scripts):
         self.name = name
-        self.update_interval = update_interval
+        self.update_interval = options.update_interval
         self.scripts = scripts
-        self.trapper = trapper(name, server)
-        self.last_update = 0
-        self.items = []
+        self.logger = logging.getLogger(name)
+        self.trapper = trapper(name, options.server, options.port)
+        self.items = set()
+
+    def loop(self):
+        while True:
+            self.update_active_checks()
+            time.sleep(self.update_interval)
+        gevent.joinall([i.job for i in self.items])
 
     item_re = re.compile('^((.+?)(\[(.+)\])?)$')
     def update_active_checks(self):
         try:
-            logging.debug('updating item list for host {0}'.format(self.name))
-            self.last_update = time.time()
-            items = []
+            self.logger.debug('updating item list')
+            items = set()
             for raw_key, interval in self.trapper.get_active_checks():
                 key, bare_key, args = self.item_re.match(raw_key).group(1, 2, 4)
                 for script in self.scripts:
                     if script.key == bare_key:
-                        items.append(item(self.name, key, interval, script, args and args.split(',') or []))
-                        break
-            self.items = items
-        except BaseException, e:
-            logging.error('failed to update active checks list for host {0}: {1}'.format(self.name, e))
-
-    def update(self, item):
-        if item == self:
-            self.update_active_checks()
-        else:
-            try:
-                self.trapper.update_item(item.key, item.check())
-            except BaseException, e:
-                logging.warning('failed to update item {0}[{2}] for host {1}: {3}'.format(item.script.key, self.name, ','.join(item.args), e))
+                       items.add(item(self.name, key, interval, script, args and args.split(',') or [], self.trapper))
+                       break
+            added_items = items - self.items
+            removed_items = self.items - items
+            if added_items:
+                self.logger.info('added items: {0}'.format(', '.join(map(str, added_items))))
+            if removed_items:
+                self.logger.info('removed items: {0}'.format(', '.join(map(str, removed_items))))
+            gevent.killall([i.job for i in removed_items], block=True)
+            self.items -= removed_items
+            for i in added_items:
+                i.job = gevent.spawn(i.check_loop)
+            self.items |= added_items
+            if not self.items:
+                self.logger.info('no items')
+        except Exception, e:
+            self.logger.exception(e)#, 'failed to update active checks list')
 
     def get_nearest_check(self):
         return min([self] + self.items, key=lambda x: x.get_timeout())
@@ -149,31 +183,43 @@ class host(object):
         return self.update_interval - (time.time() - self.last_update)
 
 class agent(object):
-    config_dir = '/etc/zabbix/conf.d'
-
-    def __init__(self, config):
+    def __init__(self):
         self.scripts = []
-        self.sleep_time = 0
-        self.load_configs()
-        self.add_self_tests()
-        self.hosts = [host(host_name, config.server, config.update_interval, self.scripts) for host_name in config.hosts.split(',')]
-
-    def load_configs(self):
-        for name in os.listdir(self.config_dir):
-            self.load_config(os.path.join(self.config_dir, name))
+        self.logger = logging.getLogger()
+        self.load_config()
+        self.load_zabbix_configs()
+        self.hosts = [host(id, self.options, self.scripts) for id in self.get_ldap_ids(self.options.ldap)]
 
     def get_sleep_time(self):
         return self.sleep_time
 
-    def add_self_tests(self):
-        class sleep_time_item(object):
-            key = 'agent.sleep_time'
-            @classmethod
-            def execute(cls):
-                return self.sleep_time
-        self.scripts.append(sleep_time_item)
+    def load_config(self):
+        parser = config.config_parser('zabbix_agent_ng')
+        parser.add_argument('--update-interval', type=int, default=120, help='items update interval')
+        parser.add_argument('--server', help='zabbix trapper server')
+        parser.add_argument('--port', type=int, default=10051, help='zabbix trapper port')
+        parser.add_argument('--ldap', default='ldap://localhost', help='address of LDAP server with tunnels info')
+        parser.add_argument('--pid-file', default='/var/run/zabbix-agent-ng.pid', help='path to pid file')
+        parser.add_argument('--zabbix-conf-dir', default='/etc/zabbix', help='path to zabbix config')
+        parser.add_argument('--daemonize', type=int, default=0, help='daemonize after start')
+        parser.parse()
+        self.options = parser.options
+        parser.init_logging()
 
-    def load_config(self, full_path):
+    def get_ldap_ids(self, host):
+        l = ldap.initialize(host)
+        for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=homer*'):
+            yield entry['cn'][0].replace('homer', 'tunnel')
+        for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=tunnel*'):
+            yield entry['cn'][0]
+        yield socket.gethostbyaddr(socket.gethostname())[0]
+
+    def load_zabbix_configs(self):
+        conf_d = os.path.join(self.options.zabbix_conf_dir, 'conf.d')
+        for name in os.listdir(conf_d):
+            self.load_zabbix_config(os.path.join(conf_d, name))
+
+    def load_zabbix_config(self, full_path):
         try:
             for line in open(full_path).readlines():
                 if line[0] == '#' or line == '\n':
@@ -190,28 +236,25 @@ class agent(object):
         except BaseException, e:
             logging.warning('can\'t parse line {0}: {1}'.format(line, e))
 
+    def daemonize(self):
+        self.context = daemon.DaemonContext()
+        # ugly hack to prevent closing of epoll queue
+        self.context.files_preserve = range(daemon.daemon.get_maximum_file_descriptors())
+        self.context.prevent_core = False
+        self.context.pidfile = daemon.pidlockfile.TimeoutPIDLockFile(self.options.pid_file, 1)
+        self.context.open()
+
     def run(self):
-        current_timeout = 999999999999
-        for host in self.hosts:
-            item = host.get_nearest_check()
-            timeout = item.get_timeout()
-            if timeout < current_timeout:
-                current_host = host
-                current_timeout = timeout
-                current_item = item
-
-        if current_timeout > 0:
-            logging.debug('sleeping for {0} seconds'.format(current_timeout))
-            time.sleep(current_timeout)
-            self.sleep_time += current_timeout
-        current_host.update(current_item)
-
-    @classmethod
-    def add_arguments(cls, parser):
-        parser.add_argument('-s', '--server', dest='server', default='monitor-iva1.yandex.net', help='zabbix trapper to connect to')
-        parser.add_argument('--hosts', dest='hosts', default='', help='host list, separated by commas')
-        parser.add_argument('-p', '--port', dest='port', type=int, default=10051, help='zabbix trapper port')
-        parser.add_argument('--update-interval', dest='update_interval', type=int, default=120, help='items update interval')
+        if self.options.daemonize:
+            self.daemonize()
+        setproctitle('zabbix-agent-ng')
+        waiter = Event()
+        waiter.clear()
+        gevent.signal(signal.SIGTERM, waiter.set)
+        jobs = [gevent.spawn(host.loop) for host in self.hosts]
+        waiter.wait()
+        self.logger.info('exiting')
 
 if __name__ == '__main__':
-    daemon(agent, 'zabbix-agent-ng', foreground=True).start()
+    a = agent()
+    a.run()

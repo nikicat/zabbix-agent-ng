@@ -3,6 +3,9 @@
 from distutils.core import setup
 setup(name='zabbix-agent-ng',
       version='1.0',
+      description='Zabbix monitoring system agent',
+      author='Nikolay Bryskin',
+      scripts=['zabbix-agent-ng'],
       py_modules=['zabbix_agent_ng'],
-      data_files=[('/etc/init.d', ['zabbix-agent-ng'])]
+      data_files=[('/etc', ['zabbix-agent-ng.conf'])]
       )

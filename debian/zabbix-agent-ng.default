@@ -1,0 +1,6 @@
+PYTHON=/usr/bin/python
+CONFIG=/etc/$NAME.conf
+LOGFILE=/var/log/$NAME.log
+USER=monitor
+GROUP=monitor
+DAEMON_ARGS="--config=$CONFIG --daemonize=1 --log-file=$LOGFILE --pid-file=$PIDFILE" 
