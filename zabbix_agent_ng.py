@@ -27,46 +27,80 @@ import itertools
 from setproctitle import setproctitle
 
 class trapper(object):
-    def __init__(self, host, server, port):
+    def __init__(self, host, options):
         self.host = host
-        self.server = server
-        self.port = port
+        self.server = options.server
+        self.port = options.port
+        if options.protocol == '1.4':
+            self.get_active_checks = self._get_active_checks_14
+            self.update_items = self._update_items_14
+            self.send_req = self._send_req_14
+        else:
+            self.get_active_checks = self._get_active_checks_18
+            self.update_items = self._update_items_18
+            self.send_req = self._send_req_18
         self.logger = logging.getLogger(host)
         self.decoder = json.JSONDecoder()
         self.encoder = json.JSONEncoder()
 
-    def update_items(self, results):
+    def _get_active_checks_14(self):
+        items = []
+        for line in self.send_req('ZBX_GET_ACTIVE_CHECKS\n{0}\n'.format(self.host)).readlines():
+            if line[:-1] == 'ZBX_EOF':
+                break
+            key, delay = line.split(':')[:2]
+            self.logger.debug('received active check {0}'.format(line[:-1]))
+            items.append((key, float(delay)))
+        return items
+
+    def _update_items_14(self, results):
+        host = base64.b64encode(self.host)
+        for key, data in results:
+            self.logger.debug('updating item {0}={1}'.format(key, data))
+            key = base64.b64encode(key)
+            data = base64.b64encode(str(data))
+            request = '<req><host>{host}</host><key>{key}</key><data>{data}</data></req>'.format(**locals())
+            reply = self._do_request(request).read()
+            if reply != 'OK':
+                raise RuntimeError(reply)
+
+    def _send_req_14(self, data):
+        data_len = struct.pack('<Q', len(data))
+        header = 'ZBXD'
+        version = '\1'
+        msg = '{header}{version}{data_len}{data}'.format(**locals())
+        return self._do_request(msg)
+
+    def _update_items_18(self, results):
         clock = int(time.time())
         inner_data = []
         for key, value in results:
             self.logger.debug('updating item {0}={1}'.format(key, value))
             inner_data.append({'host': self.host, 'key': key, 'value': value, 'clock': clock})
         data = {'request': 'agent data', 'clock': clock, 'data': inner_data}
-        response = self._send_req(data)
+        response = self.send_req(data)
         if response[u'response'] != u'success':
             raise RuntimeError(response)
 
-    def get_active_checks(self):
-        items = []
-        response = self._send_req({'request': 'active checks', 'host': self.host})
+    def _get_active_checks_18(self):
+        response = self.send_req({'request': 'active checks', 'host': self.host})
         if response[u'response'] != u'success':
             raise RuntimeError(response)
         return map(lambda i: (i[u'key'], float(i[u'delay'])), response.get(u'data', []))
 
-    def item_not_supported(self, key):
-        self.update_item((key, 'ZBX_NOTSUPPORTED'))
-
-    def _send_req(self, data):
+    def _send_req_18(self, data):
         header = 'ZBXD\x01'
         request = self.encoder.encode(data)
         data_len = struct.pack('<Q', len(request))
         self.logger.debug('sending request: {0}'.format(request))
         msg = '{header}{data_len}{data}'.format(header=header, data_len=data_len, data=request)
-        sock = self._do_request(msg)
-        response = sock.read()
-        response = self.decoder.decode(response)
+        response_data = self._do_request(msg).read()
+        response = self.decoder.decode(response_data)
         self.logger.debug('received response: {0}'.format(response))
         return response
+
+    def item_not_supported(self, key):
+        self.update_item((key, 'ZBX_NOTSUPPORTED'))
 
     def _do_request(self, data):
         sock = socket.socket()
@@ -90,12 +124,20 @@ class script(object):
 
     def execute_module(self, args_combinations):
         if hasattr(self.module, 'vmain'):
-            logging.debug('calling {0}.vmain({1})'.format(self.module, args_combinations))
-            result = self.module.vmain(args_combinations)
+            logging.debug('calling {0}.vmain({1})'.format(self.module.__name__, args_combinations))
+            results = self.module.vmain(args_combinations)
         else:
-            logging.debug('calling {0}.main({1})'.format(self.module, args_combinations))
-            result = [self.module.main(*args) for args in args_combinations]
-        return result
+            logging.debug('calling {0}.main({1})'.format(self.module.__name__, args_combinations))
+            results = []
+            for args in args_combinations:
+                try:
+                    result = self.module.main(*args)
+                except Exception, e:
+                    logging.warning('failed to check {0} for args {1}'.format(self.module.__name__, args))
+                    logging.exception(e)
+                    result = 0
+                results.append(result)
+        return results
 
     def execute_shell(self, args_combinations):
         result = []
@@ -135,7 +177,7 @@ class coupled_item(object):
     def __init__(self, script, trapper):
         self.items = set()
         self.script = script
-        self.logger = logging.getLogger('coupled_item.{0}'.format(script))
+        self.logger = logging.getLogger('coupled_item.{0}'.format(script.key))
         self.trapper = trapper
 
     def update(self, items):
@@ -167,7 +209,7 @@ class host(object):
         self.update_interval = options.update_interval
         self.scripts = scripts
         self.logger = logging.getLogger(name)
-        self.trapper = trapper(name, options.server, options.port)
+        self.trapper = trapper(name, options)
         self.items = set()
         self.coupled_items = []
 
@@ -241,7 +283,7 @@ class agent(object):
         return self.sleep_time
 
     def load_config(self):
-        parser = config.config_parser('zabbix_agent_ng')
+        parser = config.config_parser('zabbix-agent-ng')
         parser.add_argument('--update-interval', type=int, default=120, help='items update interval')
         parser.add_argument('--server', help='zabbix trapper server')
         parser.add_argument('--port', type=int, default=10051, help='zabbix trapper port')
@@ -249,6 +291,7 @@ class agent(object):
         parser.add_argument('--pid-file', default='/var/run/zabbix-agent-ng.pid', help='path to pid file')
         parser.add_argument('--zabbix-conf-dir', default='/etc/zabbix', help='path to zabbix config')
         parser.add_argument('--daemonize', type=int, default=0, help='daemonize after start')
+        parser.add_argument('--protocol', default='1.8', help='trapper protocol version')
         parser.parse()
         self.options = parser.options
         parser.init_logging()
