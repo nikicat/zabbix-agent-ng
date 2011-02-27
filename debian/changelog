@@ -1,3 +1,10 @@
+zabbix-agent-ng (0.2) lucid; urgency=low
+
+  * Trapper protocol 1.8 (1.4 still supported)
+  * Coupled items support: better checks synchronization
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Wed, 23 Feb 2011 15:12:55 +0300
+
 zabbix-agent-ng (0.1.0) lucid; urgency=low
 
   * Refactored to use gevent for IO, better performance

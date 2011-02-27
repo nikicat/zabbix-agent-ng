@@ -7,5 +7,6 @@ setup(name='zabbix-agent-ng',
       author='Nikolay Bryskin',
       scripts=['zabbix-agent-ng'],
       py_modules=['zabbix_agent_ng'],
-      data_files=[('/etc', ['zabbix-agent-ng.conf'])]
+      data_files=[('/etc', ['zabbix-agent-ng.conf']),
+                  ('/etc/zabbix/bin', ['zbx_netif.py', 'zbx_calc.py', 'zbx_cpuload.py', 'zbx_cpuutil.py', 'zbx_routecache.py', 'zbx_slabinfo.sh'])]
       )
