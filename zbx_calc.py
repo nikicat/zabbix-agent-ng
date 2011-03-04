@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import sys
 sys.path.append('/usr/local/lib/python2.6/dist-packages')
 import zabbix_api

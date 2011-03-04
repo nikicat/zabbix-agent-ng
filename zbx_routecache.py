@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/python
 
 def main():
     return int(open("/proc/net/stat/rt_cache").readlines()[1].split(" ")[0], 16)

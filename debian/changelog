@@ -1,3 +1,16 @@
+zabbix-agent-ng (0.2.2) lucid; urgency=low
+
+  * A bit more logging 
+  * Upstart support (--stop option and upstart config)
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Fri, 04 Mar 2011 17:09:41 +0300
+
+zabbix-agent-ng (0.2.1) lucid; urgency=low
+
+  * Fix: do not rename "homer*" LDAP records to "tunnel*"
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 28 Feb 2011 12:20:08 +0300
+
 zabbix-agent-ng (0.2) lucid; urgency=low
 
   * Trapper protocol 1.8 (1.4 still supported)
