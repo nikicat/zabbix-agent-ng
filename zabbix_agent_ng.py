@@ -186,6 +186,7 @@ class coupled_item(object):
             assert i.script == self.script, 'trying to insert item with different script to coupled_item: {0} != {1}'.format(i.script, self.script)
         self.items |= set(items)
         self.interval = min(self.items, key=lambda i: i.interval).interval
+        self.logger.info('new check interval {0} seconds'.format(self.interval))
 
     def check_loop(self):
         assert len(self.items) > 0
@@ -291,6 +292,7 @@ class agent(object):
         parser.add_argument('--pid-file', default='/var/run/zabbix-agent-ng.pid', help='path to pid file')
         parser.add_argument('--zabbix-conf-dir', default='/etc/zabbix', help='path to zabbix config')
         parser.add_argument('--daemonize', type=int, default=0, help='daemonize after start')
+        parser.add_argument('--stop', type=int, default=0, help='stop after start')
         parser.add_argument('--protocol', default='1.8', help='trapper protocol version')
         parser.parse()
         self.options = parser.options
@@ -299,7 +301,7 @@ class agent(object):
     def get_ldap_ids(self, host):
         l = ldap.initialize(host)
         for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=homer*'):
-            yield entry['cn'][0].replace('homer', 'tunnel')
+            yield entry['cn'][0]
         for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=tunnel*'):
             yield entry['cn'][0]
         yield socket.gethostbyaddr(socket.gethostname())[0]
@@ -335,6 +337,8 @@ class agent(object):
         self.context.open()
 
     def run(self):
+        if self.options.stop:
+            os.kill(os.getpid(), signal.SIGSTOP)
         if self.options.daemonize:
             self.daemonize()
         setproctitle('zabbix-agent-ng')

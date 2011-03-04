@@ -1,0 +1,7 @@
+expect stop
+kill timeout 10
+start on started slapd
+stop on stopping network
+respawn
+respawn limit 2 5
+exec /usr/sbin/zabbix-agent-ng --stop=1 --config=/etc/zabbix-agent-ng.conf
