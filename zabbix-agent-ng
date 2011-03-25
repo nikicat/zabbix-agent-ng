@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from zabbix_agent_ng import agent
+from zabbix_agent_ng import Agent
 
 if __name__ == '__main__':
-    a = agent()
+    a = Agent()
     a.run()
