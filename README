@@ -1,0 +1,17 @@
+zabbix-agent-ng
+Nikolay Bryskin <devel.niks@gmail.com>
+
+It's an improved Zabbix agent.
+Main features:
+  * Virtual hosts support (based on settings from LDAP)
+  * Using gevent for input-output (very high speed of items
+    checking/sending, up to 1000 items per second)
+  * Extensible not only with shell script, but also Python modules
+  * Support of simultaneous item checking (usefull for dependend items,
+    for example, CPU utilization times)
+  * Zabbix 1.4 and 1.8 protocols support
+  * Upstart support
+
+TODO:
+  * Other methods to load virtual hosts list (text file, database, etc.)
+  * Separate check intervals for items with same script
