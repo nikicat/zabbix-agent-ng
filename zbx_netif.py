@@ -13,10 +13,20 @@ fields = {
     },
 }
 
-def main(iface, dir, units):
-    for line in open('/proc/net/dev').readlines():
+def get_stat(lines, iface, dir, units):
+    for line in lines:
         if line.strip().startswith(iface):
             return line.split()[fields[dir][units]]
+
+def main(iface, dir, units):
+    return get_stat(open('/proc/net/dev').readlines(), iface, dir, units)
+
+def vmain(combinations):
+    results = []
+    lines = open('/proc/net/dev').readlines()
+    for args in combinations:
+        results.append(get_stat(lines, *args))
+    return results
 
 if __name__ == '__main__':
     import sys
