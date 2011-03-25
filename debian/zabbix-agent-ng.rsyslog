@@ -1,0 +1,2 @@
+if $PROGRAMNAME startswith 'zabbix_agent_ng' then -/var/log/zabbix-agent-ng.log
+& ~

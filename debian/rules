@@ -5,3 +5,5 @@
 
 override_dh_auto_install:
 	dh_auto_install -- --install-scripts=/usr/sbin
+	mkdir -p debian/zabbix-agent-ng/etc/rsyslog.d
+	cp debian/zabbix-agent-ng.rsyslog debian/zabbix-agent-ng/etc/rsyslog.d/90-zabbix-agent-ng.conf

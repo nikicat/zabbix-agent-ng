@@ -1,0 +1,12 @@
+/var/log/zabbix-agent-ng.log
+{
+        rotate 30
+        daily
+        missingok
+        notifempty
+        compress
+        delaycompress
+        postrotate
+                reload rsyslog >/dev/null 2>&1 || true
+        endscript
+}
