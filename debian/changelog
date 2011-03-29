@@ -1,3 +1,10 @@
+zabbix-agent-ng (0.3.1) lucid; urgency=low
+
+  * Added support of "None" items in script results (do not send them and push
+    notice to log)
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sun, 27 Mar 2011 21:16:18 +0400
+
 zabbix-agent-ng (0.3) lucid; urgency=low
 
   * Refactored: now all items grouped by their scripts and all items

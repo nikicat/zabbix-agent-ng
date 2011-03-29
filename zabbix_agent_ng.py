@@ -79,6 +79,9 @@ class Sender(object):
         for i, group in itertools.groupby(enumerate(item_value), key=lambda i: i[0]/self.ZABBIX_18_MAX_REQUEST):
             inner_data = []
             for i, (item, value) in group:
+                if value is None:
+                    self.logger.warning('ignoring None value for item [{0}]{1}'.format(item.host, item.key))
+                    continue
                 self.logger.debug('sending item [{2}]{0}={1}'.format(item.key, value, item.host))
                 inner_data.append({'host': item.host, 'key': item.key, 'value': value, 'clock': timestamp})
             data = {'request': 'agent data', 'clock': timestamp, 'data': inner_data}
