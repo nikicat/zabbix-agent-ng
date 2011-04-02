@@ -1,3 +1,9 @@
+zabbix-agent-ng (0.3.2) lucid; urgency=low
+
+  * zbx_netstat: expressions support and previous value in locals()
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sat, 02 Apr 2011 20:38:07 +0400
+
 zabbix-agent-ng (0.3.1) lucid; urgency=low
 
   * Added support of "None" items in script results (do not send them and push
