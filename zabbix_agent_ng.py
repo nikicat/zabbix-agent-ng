@@ -25,6 +25,7 @@ import ldap
 import json
 import itertools
 from setproctitle import setproctitle
+from datetime import datetime, timedelta
 
 class Sender(object):
     def __init__(self, options):
@@ -191,16 +192,17 @@ class Script(object):
             try:
                 assert len(self.items) > 0
                 self.check()
-                assert type(self.interval) is float, 'type of interval is {0}'.format(type(self.interval))
+                assert type(self.interval) is float, 'type of interval is not float but {0}'.format(type(self.interval))
             except Exception, e:
                 self.logger.exception(e)
             time.sleep(self.interval)
 
     def check(self):
-        items = self.items
+        items = [item for item in self.items if item.need_check()]
         args_combinations = [i.args for i in items]
         timestamp = int(time.time())
         results = self.execute(args_combinations)
+        map(Item.checked, items)
         self.sender.send_items(items, results, timestamp)
 
 sys.path.append(Script.bin_dir)
@@ -214,6 +216,7 @@ class Item(object):
         self.script = script
         self.logger = logging.getLogger(host)
         self.args = [arg == '$hostname' and host or arg for arg in args]
+        self.last_check_time = datetime(1, 1, 1)
 
     def __eq__(self, other):
         return self.host == other.host and self.key == other.key and self.interval == other.interval
@@ -223,6 +226,12 @@ class Item(object):
 
     def __str__(self):
         return self.key
+
+    def need_check(self):
+        return self.last_check_time + timedelta(0, self.interval) < datetime.now()
+
+    def checked(self):
+        self.last_check_time = datetime.now()
 
 class Host(object):
     def __init__(self, name, options, scripts,sender):
