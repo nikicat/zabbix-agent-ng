@@ -4,10 +4,10 @@ Created on Aug 12, 2010
 @author: nbryskin
 '''
 
-from gevent import monkey
-monkey.patch_all()
-import gevent
-from gevent.event import Event
+#from gevent import monkey
+#monkey.patch_all()
+#import gevent
+#from gevent.event import Event
 import socket
 import base64
 import struct
@@ -24,6 +24,7 @@ import daemon.pidlockfile
 import ldap
 import json
 import itertools
+import threading
 from setproctitle import setproctitle
 from datetime import datetime, timedelta
 
@@ -133,7 +134,8 @@ class Script(object):
                 self.execute = self.execute_module
         self.items = set()
         self.sender = sender
-        self.check_job = gevent.Greenlet(self.check_loop)
+        #self.check_job = gevent.Greenlet(self.check_loop)
+        self.check_job = threading.Thread(target=self.check_loop)
 
     def __str__(self):
         return '<script {0}>'.format(self.key)
@@ -180,15 +182,17 @@ class Script(object):
             self.interval = min(self.items, key=lambda i: i.interval).interval
             self.logger.info('check interval {0} seconds'.format(self.interval))
 
-        if self.items and not self.check_job.started:
+        if self.items and not self.check_job.isAlive():
             self.logger.debug('starting check loop')
+            self.checking = True
             self.check_job.start()
-        elif not self.items and self.check_job.started:
+        elif not self.items and self.check_job.isAlive():
             self.logger.debug('stopping check loop')
-            self.check_job.kill(block=True)
+            self.checking = False
+            self.check_job.join()
 
     def check_loop(self):
-        while True:
+        while self.checking:
             try:
                 assert len(self.items) > 0
                 self.check()
@@ -241,12 +245,13 @@ class Host(object):
         self.logger = logging.getLogger(name)
         self.items = set()
         self.sender = sender
+	self.update_job = threading.Thread(target=self.update_loop)
 
     def update_loop(self):
         while True:
             self.update_active_checks()
             time.sleep(self.update_interval)
-        gevent.joinall([i.job for i in self.items])
+        #gevent.joinall([i.job for i in self.items])
 
     item_re = re.compile('^((.+?)(\[(.+)\])?)$')
     def update_active_checks(self):
@@ -349,13 +354,16 @@ class Agent(object):
         if self.options.daemonize:
             self.daemonize()
         setproctitle('zabbix-agent-ng')
-        waiter = Event()
-        waiter.clear()
-        gevent.signal(signal.SIGTERM, waiter.set)
-        jobs = [gevent.spawn(host.update_loop) for host in self.hosts]
-        waiter.wait()
+        #waiter = Event()
+        #waiter.clear()
+        #gevent.signal(signal.SIGTERM, waiter.set)
+        #jobs = [gevent.spawn(host.update_loop) for host in self.hosts]
+	map(lambda h: h.update_job.start(), self.hosts)
+        #waiter.wait()
+	signal.pause()
         self.logger.info('exiting')
 
 if __name__ == '__main__':
     a = Agent()
     a.run()
+    sys.exit(0)
