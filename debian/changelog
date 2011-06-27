@@ -1,3 +1,15 @@
+zabbix-agent-ng (0.4.1) lucid; urgency=low
+
+  * Fixed program exit on SIGINT (added daemon flag on threads)
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 27 Jun 2011 00:50:28 +0400
+
+zabbix-agent-ng (0.4) lucid; urgency=low
+
+  * Migrated to threading from gevent (because of freeze bug)
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Fri, 24 Jun 2011 10:34:50 +0400
+
 zabbix-agent-ng (0.3.4) lucid; urgency=low
 
   * Updated packaged zabbix-agent-ng.conf file. Now with explanations and
