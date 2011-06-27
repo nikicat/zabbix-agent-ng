@@ -131,7 +131,7 @@ class Script(object):
         self.items = set()
         self.sender = sender
         self.check_job = threading.Thread(target=self.check_loop)
-	self.check_job.daemon = True
+        self.check_job.daemon = True
 
     def __str__(self):
         return '<script {0}>'.format(self.key)
@@ -241,8 +241,8 @@ class Host(object):
         self.logger = logging.getLogger(name)
         self.items = set()
         self.sender = sender
-	self.update_job = threading.Thread(target=self.update_loop)
-	self.update_job.daemon = True
+        self.update_job = threading.Thread(target=self.update_loop)
+        self.update_job.daemon = True
 
     def update_loop(self):
         while True:
@@ -350,8 +350,8 @@ class Agent(object):
         if self.options.daemonize:
             self.daemonize()
         setproctitle('zabbix-agent-ng')
-	map(lambda h: h.update_job.start(), self.hosts)
-	signal.pause()
+        map(lambda h: h.update_job.start(), self.hosts)
+        signal.pause()
         self.logger.info('exiting')
 
 if __name__ == '__main__':
