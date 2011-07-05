@@ -1,3 +1,16 @@
+zabbix-agent-ng (0.4.2) natty; urgency=low
+
+  * LDAP dependency replaced with homerdb module
+  * Removed --ldap option
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Wed, 06 Jul 2011 02:51:13 +0400
+
+zabbix-agent-ng (0.4.1-0ubuntu1) natty; urgency=low
+
+  * Ported to Ubuntu Natty 
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Tue, 05 Jul 2011 18:00:09 +0400
+
 zabbix-agent-ng (0.4.1) lucid; urgency=low
 
   * Fixed program exit on SIGINT (added daemon flag on threads)

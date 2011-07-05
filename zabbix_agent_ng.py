@@ -17,12 +17,13 @@ import subprocess
 import config
 import daemon
 import daemon.pidlockfile
-import ldap
 import json
 import itertools
 import threading
 from setproctitle import setproctitle
 from datetime import datetime, timedelta
+
+from homerdb import HomerDB
 
 class Sender(object):
     def __init__(self, options):
@@ -286,7 +287,7 @@ class Agent(object):
         self.load_config()
         self.sender = Sender(self.options)
         self.load_zabbix_configs()
-        self.hosts = [Host(id, self.options, self.scripts, self.sender) for id in self.get_ldap_ids(self.options.ldap)]
+        self.hosts = [Host(id, self.options, self.scripts, self.sender) for id in self.get_host_ids()]
 
     def get_sleep_time(self):
         return self.sleep_time
@@ -296,7 +297,6 @@ class Agent(object):
         parser.add_argument('--update-interval', type=int, default=120, help='items update interval')
         parser.add_argument('--server', help='zabbix feeder server')
         parser.add_argument('--port', type=int, default=10051, help='zabbix feeder port')
-        parser.add_argument('--ldap', default='ldap://localhost', help='address of LDAP server with tunnels info')
         parser.add_argument('--pid-file', default='/var/run/zabbix-agent-ng.pid', help='path to pid file')
         parser.add_argument('--zabbix-conf-dir', default='/etc/zabbix', help='path to zabbix config')
         parser.add_argument('--daemonize', type=int, default=0, help='daemonize after start')
@@ -306,12 +306,9 @@ class Agent(object):
         self.options = parser.options
         parser.init_logging()
 
-    def get_ldap_ids(self, host):
-        l = ldap.initialize(host)
-        for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=homer*'):
-            yield entry['cn'][0]
-        for dn, entry in l.search_s('dc=local,dc=net', ldap.SCOPE_SUBTREE, 'cn=tunnel*'):
-            yield entry['cn'][0]
+    def get_host_ids(self):
+        for entry in HomerDB().list():
+            yield entry.id
         yield socket.gethostbyaddr(socket.gethostname())[0]
 
     def load_zabbix_configs(self):
