@@ -1,3 +1,17 @@
+zabbix-agent-ng (0.4.5) natty; urgency=low
+
+  * Added system.uptime support
+  * Dropped useless zbx_cat.sh script
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sat, 23 Jul 2011 04:23:56 +0400
+
+zabbix-agent-ng (0.4.4) natty; urgency=low
+
+  * vfs.file.size support (disk usage)
+  * Fixed error "thread can be started only once"
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sat, 23 Jul 2011 03:29:31 +0400
+
 zabbix-agent-ng (0.4.3) natty; urgency=low
 
   * Added /etc/zabbix/conf.d/system.conf with various system and network

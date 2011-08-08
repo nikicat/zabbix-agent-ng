@@ -133,6 +133,7 @@ class Script(object):
         self.sender = sender
         self.check_job = threading.Thread(target=self.check_loop)
         self.check_job.daemon = True
+        self.checking = False
 
     def __str__(self):
         return '<script {0}>'.format(self.key)
@@ -179,11 +180,11 @@ class Script(object):
             self.interval = min(self.items, key=lambda i: i.interval).interval
             self.logger.info('check interval {0} seconds'.format(self.interval))
 
-        if self.items and not self.check_job.isAlive():
+        if self.items and not self.checking:
             self.logger.debug('starting check loop')
             self.checking = True
             self.check_job.start()
-        elif not self.items and self.check_job.isAlive():
+        elif not self.items and self.checking:
             self.logger.debug('stopping check loop')
             self.checking = False
             self.check_job.join()
