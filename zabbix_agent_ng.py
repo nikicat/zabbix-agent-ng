@@ -217,7 +217,7 @@ class Item(object):
         self.interval = interval
         self.script = script
         self.logger = logging.getLogger(host)
-        self.args = [arg == '$hostname' and host or arg for arg in args]
+        self.args = [arg == '$hostname' and host.rsplit('.', 1)[0] or arg for arg in args]
         self.last_check_time = datetime(1, 1, 1)
 
     def __eq__(self, other):
@@ -288,7 +288,7 @@ class Agent(object):
         self.load_config()
         self.sender = Sender(self.options)
         self.load_zabbix_configs()
-        self.hosts = [Host(id, self.options, self.scripts, self.sender) for id in self.get_host_ids()]
+        self.hosts = [Host(hostname, self.options, self.scripts, self.sender) for hostname in self.get_virtual_hosts()]
 
     def get_sleep_time(self):
         return self.sleep_time
@@ -303,13 +303,15 @@ class Agent(object):
         parser.add_argument('--daemonize', type=int, default=0, help='daemonize after start')
         parser.add_argument('--stop', type=int, default=0, help='stop after start')
         parser.add_argument('--protocol', default='1.8', help='feeder protocol version')
+        parser.add_argument('--hosts', default='', help='virtual hosts list (separated by commas)')
         parser.parse()
         self.options = parser.options
         parser.init_logging()
 
-    def get_host_ids(self):
-        for entry in HomerDB().list():
-            yield entry.id
+    def get_virtual_hosts(self):
+        hostname = socket.gethostname()
+        for vhost in self.options.hosts.split(','):
+            yield '{1}.{0}'.format(hostname, vhost)
         yield socket.gethostbyaddr(socket.gethostname())[0]
 
     def load_zabbix_configs(self):
