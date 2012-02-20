@@ -1,8 +1,34 @@
-zabbix-agent-ng (0.4.4) oneiric; urgency=low
+zabbix-agent-ng (0.4.8) oneiric; urgency=low
 
   * Added proc.mem item support
 
  -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 20 Feb 2012 19:49:24 +0400
+
+zabbix-agent-ng (0.4.7) natty; urgency=low
+
+  * Read virtual host list from config instead of homerdb
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Fri, 23 Sep 2011 18:19:45 +0400
+
+zabbix-agent-ng (0.4.6) natty; urgency=low
+
+  * Multi-host VPN tunnels support
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Thu, 11 Aug 2011 06:19:15 +0400
+
+zabbix-agent-ng (0.4.5) natty; urgency=low
+
+  * Added system.uptime support
+  * Dropped useless zbx_cat.sh script
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sat, 23 Jul 2011 04:23:56 +0400
+
+zabbix-agent-ng (0.4.4) natty; urgency=low
+
+  * vfs.file.size support (disk usage)
+  * Fixed error "thread can be started only once"
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Sat, 23 Jul 2011 03:29:31 +0400
 
 zabbix-agent-ng (0.4.3) natty; urgency=low
 
