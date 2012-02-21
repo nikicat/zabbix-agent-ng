@@ -8,5 +8,5 @@ setup(name='zabbix-agent-ng',
       scripts=['zabbix-agent-ng'],
       py_modules=['zabbix_agent_ng'],
       data_files=[('/etc', ['zabbix-agent-ng.conf']),
-                  ('/etc/zabbix/bin', ['zbx_netif.py', 'zbx_calc.py', 'zbx_cpuload.py', 'zbx_cpuutil.py', 'zbx_routecache.py', 'zbx_slabinfo.sh', 'zbx_netstat.py', 'zbx_df.py', 'zbx_mem.py'])]
+                  ('/etc/zabbix/bin', ['zbx_netif.py', 'zbx_calc.py', 'zbx_cpuload.py', 'zbx_cpuutil.py', 'zbx_routecache.py', 'zbx_slabinfo.sh', 'zbx_netstat.py', 'zbx_df.py', 'zbx_procmem.py', 'zbx_vm.py'])]
       )
