@@ -129,16 +129,42 @@ class Script(object):
             if hasattr(module, 'main') or hasattr(module, 'vmain'):
                 self.module = module
                 self.execute = self.execute_module
+            self.args_map = list(self.parse_args_format(self.command))
         self.items = set()
         self.sender = sender
         self.check_job = threading.Thread(target=self.check_loop)
         self.check_job.daemon = True
         self.checking = False
+        self.update_lock = threading.Lock()
+        self.stop_condition = threading.Condition()
+        self.interval = float('inf')
 
     def __str__(self):
         return '<script {0}>'.format(self.key)
 
+    def map_arguments(self, args):
+        for m in self.args_map:
+            if type(m) is int:
+                if m < len(args):
+                    yield args[m]
+                else:
+                    yield ''
+            else:
+                yield m
+
+    def parse_args_format(self, command):
+        args_format = command.split()[1:]
+        for symbol in args_format:
+            if symbol[0] == '$':
+                if symbol[1] == '0':
+                    yield self.key
+                else:
+                    yield int(symbol[1]) - 1
+            else:
+                yield symbol
+
     def execute_module(self, args_combinations):
+        args_combinations = map(lambda ac: list(self.map_arguments(ac)), args_combinations)
         if hasattr(self.module, 'vmain'):
             self.logger.debug('calling {0}.vmain({1})'.format(self.module.__name__, args_combinations))
             results = self.module.vmain(args_combinations)
@@ -170,34 +196,39 @@ class Script(object):
         return result
 
     def update(self, added_items, removed_items):
-        for i in added_items + removed_items:
-            assert i.script == self, 'trying to insert item with different script to CoupledItem: {0} != {1}'.format(i.script, self)
-        if added_items or removed_items:
-            self.logger.debug('added items: {0}; removed items: {1}'.format(', '.join(map(str, added_items)), ', '.join(map(str, removed_items))))
-        self.items |= set(added_items)
-        self.items -= set(removed_items)
-        if self.items:
-            self.interval = min(self.items, key=lambda i: i.interval).interval
-            self.logger.info('check interval {0} seconds'.format(self.interval))
+        with self.update_lock:
+            for i in added_items + removed_items:
+                assert i.script == self, 'trying to bind item with unmatched script: {0} != {1}'.format(i.script, self)
+            if added_items or removed_items:
+                self.logger.debug('added items: {0}; removed items: {1}'.format(', '.join(map(str, added_items)), ', '.join(map(str, removed_items))))
+            self.items |= set(added_items)
+            self.items -= set(removed_items)
+            if self.items:
+                new_interval = min(self.items, key=lambda i: i.interval).interval
+                if self.interval != new_interval:
+                    self.logger.info('check interval changed from {0} to {1} seconds'.format(self.interval, new_interval))
+                    self.interval = new_interval
 
-        if self.items and not self.checking:
-            self.logger.debug('starting check loop')
-            self.checking = True
-            self.check_job.start()
-        elif not self.items and self.checking:
-            self.logger.debug('stopping check loop')
-            self.checking = False
-            self.check_job.join()
+            if self.items and not self.checking:
+                self.logger.debug('starting check loop')
+                self.checking = True
+                self.check_job.start()
+            elif not self.items and self.checking:
+                self.logger.debug('stopping check loop')
+                with self.stop_condition:
+                    self.checking = False
+                    self.stop_condition.notify()
+                self.check_job.join()
 
     def check_loop(self):
-        while self.checking:
-            try:
-                assert len(self.items) > 0
-                self.check()
-                assert type(self.interval) is float, 'type of interval is not float but {0}'.format(type(self.interval))
-            except Exception, e:
-                self.logger.exception(e)
-            time.sleep(self.interval)
+        with self.stop_condition:
+            while self.checking:
+                try:
+                    assert len(self.items) > 0
+                    self.check()
+                    self.stop_condition.wait(self.interval)
+                except Exception, e:
+                    self.logger.exception(e)
 
     def check(self):
         items = [item for item in self.items if item.need_check()]
@@ -236,7 +267,7 @@ class Item(object):
         self.last_check_time = datetime.now()
 
 class Host(object):
-    def __init__(self, name, options, scripts,sender):
+    def __init__(self, name, options, scripts, sender):
         self.name = name
         self.update_interval = options.update_interval
         self.scripts = scripts
@@ -309,15 +340,16 @@ class Agent(object):
         parser.init_logging()
 
     def get_virtual_hosts(self):
+        yield socket.gethostbyaddr(socket.gethostname())[0]
         hostname = socket.gethostname()
         for vhost in self.options.hosts.split(','):
             yield '{1}.{0}'.format(hostname, vhost)
-        yield socket.gethostbyaddr(socket.gethostname())[0]
 
     def load_zabbix_configs(self):
         conf_d = os.path.join(self.options.zabbix_conf_dir, 'conf.d')
         for name in os.listdir(conf_d):
-            self.load_zabbix_config(os.path.join(conf_d, name))
+            if name.endswith('.conf'):
+                self.load_zabbix_config(os.path.join(conf_d, name))
 
     def load_zabbix_config(self, full_path):
         try:

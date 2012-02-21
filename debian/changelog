@@ -1,8 +1,18 @@
+zabbix-agent-ng (0.5) oneiric; urgency=low
+
+  * Ignore config files whose names do not end with '.conf'
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Tue, 21 Feb 2012 00:38:40 +0400
+
 zabbix-agent-ng (0.4.8) oneiric; urgency=low
 
   * Added proc.mem item support
+  * Added proc.mem_rss item support
+  * ZabbixAgent config file added back to package
+  * Fixed race-contition while updating item list for the same script
+  * New feature: argument format preserving for python check modules
 
- -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 20 Feb 2012 19:49:24 +0400
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 20 Feb 2012 22:14:19 +0400
 
 zabbix-agent-ng (0.4.7) natty; urgency=low
 
