@@ -7,7 +7,7 @@ Standards-Version: 3.9.1
 
 Package: zabbix-agent-ng
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-config, python-daemon, python-setproctitle
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-config, python-daemon, python-setproctitle, python-psutil
 Description: zabbix-agent that can send data about multiple hosts
  zabbix-agent-ng utilizes threading library, that gives him
  possibility of hightly concurrent statistics data retriveing and sending.
