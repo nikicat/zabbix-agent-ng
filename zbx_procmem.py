@@ -13,7 +13,7 @@ def filterproc(name, user, cmdline):
         psutil.process_iter())
 
 def main(memtype, name, user, mode, cmdline):
-    rsss = list(itertools.imap(lambda proc: getattr(proc.get_memory_info(), memtype), filterproc(name, user, cmdline)))
+    rsss = list(itertools.imap(lambda proc: proc.get_memory_info()[{'rss':0,'vms':1}[memtype]], filterproc(name, user, cmdline)))
     if len(rsss) == 0:
         return 0
     if mode == 'sum' or mode == '':
