@@ -102,8 +102,8 @@ class Sender(object):
         self.logger.debug('sending request: {0}'.format(request))
         msg = '{header}{data_len}{data}'.format(header=header, data_len=data_len, data=request)
         response_data = self._do_request(msg).read()
+        self.logger.debug('received response: {0}'.format(response_data))
         response = self.decoder.decode(response_data)
-        self.logger.debug('received response: {0}'.format(response))
         return response
 
     def item_not_supported(self, key):
