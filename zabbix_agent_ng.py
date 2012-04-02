@@ -84,10 +84,16 @@ class Sender(object):
                 self.logger.debug('sending item [{2}]{0}={1}'.format(item.key, value, item.host))
                 inner_data.append({'host': item.host, 'key': item.key, 'value': value, 'clock': timestamp})
             data = {'request': 'agent data', 'clock': timestamp, 'data': inner_data}
-            response = self.send_req(data)
-            if response[u'response'] != u'success':
-                raise RuntimeError(response)
-            self.logger.debug('items successfully sent: {0}'.format(', '.join(['{0}.{1}'.format(item.host, item.key) for item in items])))
+            for i in range(5):
+                try:
+                    response = self.send_req(data)
+                    if response[u'response'] != u'success':
+                        raise RuntimeError(response)
+                    self.logger.debug('items successfully sent: {0}'.format(', '.join(['{0}.{1}'.format(item.host, item.key) for item in items])))
+                    break
+                except:
+                    self.logger.error('failed to send items', exc_info=True)
+                    self.logger.info('resending items: {0} try'.format(i+1))
 
     def _get_active_checks_18(self, host):
         response = self.send_req({'request': 'active checks', 'host': host})

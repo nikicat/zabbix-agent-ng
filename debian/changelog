@@ -1,3 +1,9 @@
+zabbix-agent-ng (0.5.3) oneiric; urgency=low
+
+  * Resend items to zabbix in case of invalid response
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Fri, 24 Feb 2012 20:30:23 +0400
+
 zabbix-agent-ng (0.5.2) oneiric; urgency=low
 
   * Compatibility fix for python-psutil < 0.2
