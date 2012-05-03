@@ -23,8 +23,6 @@ import threading
 from setproctitle import setproctitle
 from datetime import datetime, timedelta
 
-from homerdb import HomerDB
-
 class Sender(object):
     def __init__(self, options):
         self.logger = logging.getLogger('Sender')
