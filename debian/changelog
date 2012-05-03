@@ -1,3 +1,15 @@
+zabbix-agent-ng (0.5.5) oneiric; urgency=low
+
+  * Added empty dir etc/zabbix-agent-ng.conf.d
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Tue, 17 Apr 2012 18:36:53 +0400
+
+zabbix-agent-ng (0.5.4) oneiric; urgency=low
+
+  * Fixed Upstart config
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Mon, 02 Apr 2012 23:38:37 +0400
+
 zabbix-agent-ng (0.5.3) oneiric; urgency=low
 
   * Resend items to zabbix in case of invalid response
