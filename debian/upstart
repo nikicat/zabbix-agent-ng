@@ -1,6 +1,7 @@
+description "zabbbix agent Next Generation"
 expect stop
 kill timeout 10
-start on started slapd
+start on (virtual-filesystems and net-device-up IFACE=eth0 and started rsyslog)
 stop on stopping network
 respawn
 respawn limit 2 5
