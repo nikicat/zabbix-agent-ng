@@ -1,3 +1,9 @@
+zabbix-agent-ng (0.5.7) precise; urgency=low
+
+  * Added system.run support
+
+ -- Nikolay Bryskin <nbryskin@yandex-team.ru>  Thu, 10 May 2012 13:58:56 +0400
+
 zabbix-agent-ng (0.5.6) precise; urgency=low
 
   * Removed unused homerdb import
