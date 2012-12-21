@@ -1,22 +1,15 @@
 import sys
 import psutil
 
-class ZbxVmException(RuntimeError):
-    pass
-
-def main(mode):
-    if mode == 'free' or mode == 'available':
-        return psutil.avail_virtmem()
-    elif mode == 'pfree':
-        return psutil.avail_phymem()
-    elif mode == 'buffers':
-        return psutil.phymem_buffers()
-    elif mode == 'total':
-        return psutil.total_virtmem()
-    elif mode == 'cached':
-        return psutil.cached_phymem()
-    else:
-        raise ZbxVmException('invalid mode {0}, possible modes [free,available,pfree,buffers,total,cached]'.format(mode))
+def main(expr):
+    vars = {'free': psutil.avail_virtmem(),
+            'available': psutil.avail_virtmem(),
+            'pfree': psutil.avail_phymem(),
+            'buffers': psutil.phymem_buffers(),
+            'total': psutil.total_virtmem(),
+            'cached': psutil.cached_phymem(),
+    }
+    return eval(expr, {}, vars)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
